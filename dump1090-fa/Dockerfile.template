@@ -1,21 +1,16 @@
 FROM balenalib/armv7hf-debian:buster as run
 
-RUN apt-get update && \
-	apt-get install -y librtlsdr-dev fakeroot dpkg-dev git debhelper libusb-1.0-0-dev pkg-config dh-systemd libncurses5-dev libusb-1.0-0 build-essential cmake libtecla1 libtecla-dev wget doxygen help2man pandoc 
-
-RUN git clone --recursive https://github.com/Nuand/bladeRF.git
-WORKDIR bladeRF
-RUN git checkout tags/2019.07 && dpkg-buildpackage -b
+COPY start.sh /
+RUN chmod +x /start.sh
 
 WORKDIR /
-RUN dpkg -i libbladerf2_2019.07_*.deb libbladerf-dev_2019.07*.deb
 COPY ./rtlsdr-blacklist.conf /etc/modprobe.d/blacklist.conf
 
 WORKDIR tmp
 
-RUN wget https://flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_3.8.1_all.deb
+RUN apt-get update && apt-get install -y librtlsdr0 libusb-1.0-0 init-system-helpers lighttpd supervisor wget
 
-RUN apt-get update && apt-get install -y librtlsdr0 libusb-1.0-0 init-system-helpers lighttpd supervisor
+RUN wget https://flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_3.8.1_all.deb
 
 RUN dpkg -i piaware*.deb
 RUN apt-get update && apt-get install -y --no-install-recommends dump1090-fa
@@ -26,4 +21,5 @@ ADD supervisor /etc/supervisor
 
 EXPOSE 30001 30002 30003 30004 30005 30104 8080
 
+ENTRYPOINT ["/start.sh"]
 CMD "modprobe -r dvb_usb_rtl28xxu && supervisord -c /etc/supervisor/supervisord.conf"
